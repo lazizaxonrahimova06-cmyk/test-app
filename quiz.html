@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pedagogical Communication Test</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:      #f0f4ff;
+      --surface: #ffffff;
+      --border:  #dde5f4;
+      --text:    #0d1421;
+      --muted:   #6b7fa3;
+      --accent:  #2e7eff;
+      --a-light: #e8f0ff;
+      --a-dark:  #1a5fd4;
+      --green:   #16a34a;
+      --g-light: #dcfce7;
+      --red:     #dc2626;
+      --r-light: #fee2e2;
+      --gold:    #f59e0b;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 16px 12px 40px;
+      background-image: radial-gradient(ellipse at 50% 0%, rgba(46,126,255,0.12) 0%, transparent 60%);
+    }
+
+    /* Screens */
+    .screen { display: none; width: 100%; max-width: 520px; }
+    .screen.active {
+      display: block;
+      animation: up 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    @keyframes up {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Card */
+    .card {
+      background: var(--surface);
+      border-radius: 22px;
+      padding: 28px 24px;
+      box-shadow: 0 2px 32px rgba(46,126,255,0.1), 0 1px 4px rgba(0,0,0,0.06);
+    }
+
+    /* ── Start Screen ── */
+    .start-top {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .start-emoji { font-size: 52px; margin-bottom: 12px; }
+    .start-title {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.4px;
+      margin-bottom: 6px;
+    }
+    .start-sub { font-size: 14px; color: var(--muted); line-height: 1.5; }
+
+    .chips {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .chip {
+      flex: 1;
+      background: var(--a-light);
+      border-radius: 12px;
+      padding: 12px 8px;
+      text-align: center;
+    }
+    .chip .val { font-size: 22px; font-weight: 800; color: var(--accent); font-family: 'Space Mono', monospace; }
+    .chip .lbl { font-size: 10px; color: var(--muted); margin-top: 3px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .field-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .field-input {
+      width: 100%;
+      padding: 15px 16px;
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      font-size: 16px;
+      font-family: 'DM Sans', sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      outline: none;
+      transition: border-color 0.2s;
+      margin-bottom: 20px;
+    }
+    .field-input:focus { border-color: var(--accent); background: #fff; }
+    .field-input.error { border-color: var(--red); }
+
+    .btn-primary {
+      width: 100%;
+      padding: 16px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.12s;
+      letter-spacing: -0.2px;
+    }
+    .btn-primary:hover  { background: var(--a-dark); }
+    .btn-primary:active { transform: scale(0.97); }
+    .btn-primary:disabled {
+      background: var(--border);
+      color: var(--muted);
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ── Quiz Screen ── */
+    .prog-header { margin-bottom: 14px; }
+    .prog-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .prog-lbl { font-size: 12px; font-weight: 600; color: var(--muted); }
+    .prog-num {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+      font-family: 'Space Mono', monospace;
+    }
+    .prog-track {
+      width: 100%;
+      height: 5px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .prog-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), #60a5fa);
+      border-radius: 3px;
+      transition: width 0.5s ease;
+    }
+
+    .q-text {
+      font-size: 16px;
+      font-weight: 600;
+      line-height: 1.6;
+      margin-bottom: 20px;
+      color: var(--text);
+    }
+
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      margin-bottom: 18px;
+    }
+    .option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      cursor: pointer;
+      background: var(--surface);
+      transition: border-color 0.15s, background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .option:hover { border-color: var(--accent); background: var(--a-light); }
+    .option.selected {
+      border-color: var(--accent);
+      background: var(--a-light);
+    }
+    .opt-letter {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      flex-shrink: 0;
+      transition: all 0.15s;
+    }
+    .option.selected .opt-letter {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .opt-text { font-size: 14px; line-height: 1.45; color: var(--text); }
+
+    /* ── Result Screen ── */
+    .result-top {
+      text-align: center;
+      margin-bottom: 22px;
+    }
+    .result-emoji { font-size: 60px; margin-bottom: 10px; }
+    .result-name  { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; margin-bottom: 4px; }
+    .result-sub   { font-size: 13px; color: var(--muted); }
+
+    .score-box {
+      background: var(--a-light);
+      border-radius: 16px;
+      padding: 26px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .score-big {
+      font-size: 58px;
+      font-weight: 800;
+      color: var(--accent);
+      font-family: 'Space Mono', monospace;
+      line-height: 1;
+    }
+    .score-out  { font-size: 22px; color: var(--muted); font-family: 'Space Mono', monospace; }
+    .score-pct  {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-top: 8px;
+      font-family: 'Space Mono', monospace;
+    }
+
+    .result-msg {
+      font-size: 14px;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.6;
+      margin-bottom: 22px;
+    }
+
+    .btn-secondary {
+      width: 100%;
+      padding: 14px;
+      background: transparent;
+      color: var(--accent);
+      border: 2px solid var(--accent);
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 10px;
+    }
+    .btn-secondary:hover { background: var(--a-light); }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════ START SCREEN ═══════════════ -->
+<div id="screen-start" class="screen active">
+  <div class="card">
+    <div class="start-top">
+      <div class="start-emoji">📝</div>
+      <h1 class="start-title">Pedagogical Communication Test</h1>
+      <p class="start-sub">Testni boshlash uchun ismingizni kiriting</p>
+    </div>
+
+    <div class="chips">
+      <div class="chip">
+        <div class="val">15</div>
+        <div class="lbl">Savol</div>
+      </div>
+      <div class="chip">
+        <div class="val">A–D</div>
+        <div class="lbl">Variant</div>
+      </div>
+      <div class="chip">
+        <div class="val">EN</div>
+        <div class="lbl">Til</div>
+      </div>
+    </div>
+
+    <div class="field-label">Ism va Familiya</div>
+    <input
+      class="field-input"
+      id="nameInput"
+      type="text"
+      placeholder="Masalan: Aziz Karimov"
+      maxlength="50"
+      autocomplete="off"
+      autocorrect="off"
+      spellcheck="false"
+    >
+
+    <button class="btn-primary" id="startBtn" onclick="startQuiz()">
+      Testni Boshlash →
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════ QUIZ SCREEN ═══════════════ -->
+<div id="screen-quiz" class="screen">
+  <div class="prog-header">
+    <div class="prog-row">
+      <span class="prog-lbl">Savol</span>
+      <span class="prog-num" id="progNum">1 / 15</span>
+    </div>
+    <div class="prog-track">
+      <div class="prog-fill" id="progFill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="q-text" id="qText"></p>
+    <div class="options" id="optWrap"></div>
+    <button class="btn-primary" id="nextBtn" onclick="nextQuestion()" disabled>
+      Keyingisi →
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════ RESULT SCREEN ═══════════════ -->
+<div id="screen-result" class="screen">
+  <div class="card">
+    <div class="result-top">
+      <div class="result-emoji" id="rIcon">🎉</div>
+      <h2 class="result-name" id="rName"></h2>
+      <p class="result-sub">Test yakunlandi!</p>
+    </div>
+
+    <div class="score-box">
+      <span class="score-big" id="rScore">0</span>
+      <span class="score-out">/15</span>
+      <div class="score-pct" id="rPct">0%</div>
+    </div>
+
+    <p class="result-msg" id="rMsg"></p>
+
+    <button class="btn-secondary" onclick="restartQuiz()">
+      🔄 Qayta boshlash
+    </button>
+  </div>
+</div>
+
+<script>
+  // ================================================================
+  //  FIREBASE CONFIG
+  //  admin.html dagi bilan bir xil bo'lishi kerak
+  // ================================================================
+  const firebaseConfig = {
+    apiKey:            "YOUR_API_KEY",
+    authDomain:        "YOUR_PROJECT_ID.firebaseapp.com",
+    databaseURL:       "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+    projectId:         "YOUR_PROJECT_ID",
+    storageBucket:     "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId:             "YOUR_APP_ID"
+  };
+  // ================================================================
+
+  const QUESTIONS = [
+    {
+      q: "Who defined pedagogical communication as a professional interaction that fulfills cognitive, educational, and personal developmental functions, creating optimal conditions for learning?",
+      opts: ["Dell Hymes", "A.A. Leontiev", "Carl Rogers", "V.A. Kan-Kalik"],
+      ans: 1
+    },
+    {
+      q: "Which classical model describes communication as a simple linear process: source → encoder → channel → decoder → receiver?",
+      opts: ["The Transactional Model", "The Socratic Model", "The Shannon–Weaver Model", "The Bakhtin Dialogic Model"],
+      ans: 2
+    },
+    {
+      q: "In sociolinguistics, what type of competence refers to the knowledge of social rules governing language use, such as politeness and formality?",
+      opts: ["Linguistic competence", "Strategic competence", "Discourse competence", "Sociolinguistic competence"],
+      ans: 3
+    },
+    {
+      q: "According to V.A. Kan-Kalik, which pedagogical communication style is characterized by high teacher control, immediate public correction of errors, and reduced student motivation?",
+      opts: ["Democratic style", "Liberal style", "Authoritarian style", "Laissez-faire style"],
+      ans: 2
+    },
+    {
+      q: "What is the name of the period of silence that a teacher allows after asking a question before speaking or intervening?",
+      opts: ["Formative assessment", "Wait time", "Productive pause", "Probing time"],
+      ans: 1
+    },
+    {
+      q: "According to Mary Budd Rowe's research, what is the optimal duration for wait time to significantly improve student reasoning and response quality?",
+      opts: ["1 second", "3 to 5 seconds", "10 to 12 seconds", "15 seconds"],
+      ans: 1
+    },
+    {
+      q: "Which active listening technique involves restating the student's contribution in the teacher's own words to confirm understanding?",
+      opts: ["Reflection", "Paraphrasing", "Summarizing", "Probing"],
+      ans: 1
+    },
+    {
+      q: "According to Edward T. Hall's proxemics, what is the typical spatial distance range used for group instruction and professional interaction?",
+      opts: ["Intimate distance (0–45 cm)", "Personal distance (45–120 cm)", "Social distance (1.2–3.5 m)", "Public distance (3.5 m+)"],
+      ans: 2
+    },
+    {
+      q: "In Bloom's Taxonomy, a question that asks students to 'explain ideas in their own words' belongs to which cognitive level?",
+      opts: ["Remembering", "Understanding", "Analyzing", "Creating"],
+      ans: 1
+    },
+    {
+      q: "What function of pedagogical communication is linked to the teacher's ability to provide emotional support and reduce a student's psychological distress?",
+      opts: ["Regulatory function", "Perceptual function", "Interactive function", "Psychotherapeutic function"],
+      ans: 3
+    },
+    {
+      q: "Which term was introduced by V.A. Kan-Kalik to describe a teacher's ability to respond spontaneously and inventively to unpredictable classroom situations?",
+      opts: ["Strategic competence", "Communicative creativity", "Behavioral empathy", "Situational flexibility"],
+      ans: 1
+    },
+    {
+      q: "According to Donald Schön, what type of reflection involves systematic, retrospective analysis of a lesson after the communication has ended?",
+      opts: ["Reflection-in-action", "Pre-interaction planning", "Reflection-on-action", "Semantic reflection"],
+      ans: 2
+    },
+    {
+      q: "What phenomenon occurs when a teacher communicates low expectations to a student through subtle cues, causing the student to internalize those expectations and perform poorly?",
+      opts: ["Confirmation bias", "Socratic tradition", "The Pygmalion effect", "The Banking model"],
+      ans: 2
+    },
+    {
+      q: "What type of communicative barrier arises specifically from differences in the meaning that teachers and students assign to words, phrases, or technical jargon?",
+      opts: ["Emotional barrier", "Perceptual barrier", "Status and power barrier", "Semantic barrier"],
+      ans: 3
+    },
+    {
+      q: "According to psycholinguistic research mentioned in the document, what is the optimal speech rate for instructional purposes in the classroom?",
+      opts: ["60–80 words per minute", "120–150 words per minute", "180–200 words per minute", "220–250 words per minute"],
+      ans: 1
+    }
+  ];
+
+  const LETTERS = ['A', 'B', 'C', 'D'];
+
+  // State
+  let userId        = null;
+  let userName      = '';
+  let currentQ      = 0;
+  let selectedOpt   = null;
+  let score         = 0;
+  let participantRef = null;
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // ── Check localStorage: already finished? ──
+  (function checkPrevious() {
+    const id       = localStorage.getItem('quiz_userId');
+    const finished = localStorage.getItem('quiz_finished') === 'true';
+    const name     = localStorage.getItem('quiz_name');
+    const s        = parseInt(localStorage.getItem('quiz_score'), 10);
+
+    if (id && finished && name && !isNaN(s)) {
+      showResultScreen(name, s);
+    }
+  })();
+
+  // ── Start ──
+  function startQuiz() {
+    const input = document.getElementById('nameInput');
+    const name  = input.value.trim();
+
+    if (!name) {
+      input.classList.add('error');
+      input.focus();
+      setTimeout(() => input.classList.remove('error'), 1500);
+      return;
+    }
+
+    userName = name;
+    userId   = 'u_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+    participantRef = db.ref('participants/' + userId);
+
+    localStorage.setItem('quiz_userId',   userId);
+    localStorage.setItem('quiz_name',     userName);
+    localStorage.removeItem('quiz_finished');
+    localStorage.removeItem('quiz_score');
+
+    participantRef.set({
+      name:      userName,
+      score:     0,
+      finished:  false,
+      startedAt: Date.now()
+    });
+
+    currentQ    = 0;
+    score       = 0;
+    selectedOpt = null;
+
+    showScreen('screen-quiz');
+    renderQuestion();
+  }
+
+  // ── Render question ──
+  function renderQuestion() {
+    const q = QUESTIONS[currentQ];
+
+    document.getElementById('progNum').textContent  = `${currentQ + 1} / ${QUESTIONS.length}`;
+    document.getElementById('progFill').style.width = `${(currentQ / QUESTIONS.length) * 100}%`;
+    document.getElementById('qText').textContent    = q.q;
+
+    const wrap = document.getElementById('optWrap');
+    wrap.innerHTML = q.opts.map((opt, i) => `
+      <div class="option" id="opt_${i}" onclick="selectOption(${i})">
+        <div class="opt-letter">${LETTERS[i]}</div>
+        <div class="opt-text">${opt}</div>
+      </div>
+    `).join('');
+
+    selectedOpt = null;
+
+    const btn    = document.getElementById('nextBtn');
+    btn.disabled = true;
+    btn.textContent = (currentQ === QUESTIONS.length - 1) ? 'Yakunlash ✓' : 'Keyingisi →';
+  }
+
+  // ── Select option ──
+  function selectOption(i) {
+    document.querySelectorAll('.option').forEach(el => el.classList.remove('selected'));
+    document.getElementById('opt_' + i).classList.add('selected');
+    selectedOpt = i;
+    document.getElementById('nextBtn').disabled = false;
+  }
+
+  // ── Next question ──
+  function nextQuestion() {
+    if (selectedOpt === null) return;
+
+    if (selectedOpt === QUESTIONS[currentQ].ans) {
+      score++;
+    }
+
+    currentQ++;
+
+    if (currentQ < QUESTIONS.length) {
+      renderQuestion();
+    } else {
+      finishQuiz();
+    }
+  }
+
+  // ── Finish ──
+  function finishQuiz() {
+    const finishedAt = Date.now();
+
+    if (participantRef) {
+      participantRef.update({ score, finished: true, finishedAt });
+    }
+
+    localStorage.setItem('quiz_finished', 'true');
+    localStorage.setItem('quiz_score',    score.toString());
+
+    showResultScreen(userName, score);
+  }
+
+  // ── Show result ──
+  function showResultScreen(name, s) {
+    const total = QUESTIONS.length;
+    const pct   = Math.round((s / total) * 100);
+
+    const icon = pct >= 80 ? '🏆' : pct >= 60 ? '👍' : pct >= 40 ? '📚' : '💪';
+    const msg  = pct >= 80
+      ? "Ajoyib natija! Mavzuni a'lo darajada o'zlashtirgansiz."
+      : pct >= 60
+      ? "Yaxshi natija! Biroz ko'proq o'qish foydali bo'ladi."
+      : pct >= 40
+      ? "Mavzuni chuqurroq o'rganish tavsiya etiladi."
+      : "Qo'shimcha tayyorgarlik ko'rish zarur. Davom eting!";
+
+    document.getElementById('rIcon').textContent  = icon;
+    document.getElementById('rName').textContent  = name;
+    document.getElementById('rScore').textContent = s;
+    document.getElementById('rPct').textContent   = pct + '%';
+    document.getElementById('rMsg').textContent   = msg;
+
+    showScreen('screen-result');
+  }
+
+  // ── Restart ──
+  function restartQuiz() {
+    localStorage.removeItem('quiz_userId');
+    localStorage.removeItem('quiz_name');
+    localStorage.removeItem('quiz_finished');
+    localStorage.removeItem('quiz_score');
+    document.getElementById('nameInput').value = '';
+    showScreen('screen-start');
+  }
+
+  // ── Helper ──
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  // Enter key support
+  document.getElementById('nameInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') startQuiz();
+  });
+</script>
+</body>
+</html>

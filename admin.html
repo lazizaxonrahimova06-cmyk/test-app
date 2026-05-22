@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Leaderboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:        #080c14;
+      --surface:   #0d1421;
+      --surface2:  #111a2d;
+      --border:    #1e2d45;
+      --text:      #e8eef8;
+      --muted:     #4a607a;
+      --accent:    #2e7eff;
+      --accent2:   #00d4ff;
+      --green:     #00e676;
+      --gold:      #ffd740;
+      --silver:    #b0bec5;
+      --bronze:    #ff8a65;
+      --red:       #ff5252;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background-image:
+        radial-gradient(ellipse at 20% 0%, rgba(46,126,255,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 100%, rgba(0,212,255,0.05) 0%, transparent 60%);
+    }
+
+    /* ── Header ── */
+    .header {
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      background: rgba(13,20,33,0.8);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .brand-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    .brand-text h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
+    .brand-text p  { font-size: 12px; color: var(--muted); margin-top: 1px; }
+
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .live-pill {
+      display: flex; align-items: center; gap: 7px;
+      background: rgba(0,230,118,0.1);
+      border: 1px solid rgba(0,230,118,0.25);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--green);
+      font-family: 'Space Mono', monospace;
+    }
+    .live-dot {
+      width: 7px; height: 7px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: blink 1.4s ease-in-out infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.2; }
+    }
+
+    /* ── Layout ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 290px 1fr;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      border-right: 1px solid var(--border);
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+    }
+    .panel-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    /* QR */
+    #qrcode {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+    #qrcode canvas, #qrcode img {
+      border-radius: 10px;
+      border: 6px solid var(--surface2);
+    }
+    .quiz-url {
+      font-size: 10px;
+      font-family: 'Space Mono', monospace;
+      color: var(--accent2);
+      word-break: break-all;
+      text-align: center;
+      line-height: 1.6;
+      background: var(--surface2);
+      padding: 8px;
+      border-radius: 8px;
+    }
+
+    /* Stats */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .stat-box {
+      background: var(--surface2);
+      border-radius: 10px;
+      padding: 12px 10px;
+      text-align: center;
+    }
+    .stat-box .num {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--accent2);
+      font-family: 'Space Mono', monospace;
+      line-height: 1;
+    }
+    .stat-box .lbl {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 5px;
+      font-weight: 500;
+    }
+
+    /* Reset btn */
+    .btn-reset {
+      width: 100%;
+      padding: 11px;
+      background: transparent;
+      color: var(--red);
+      border: 1px solid rgba(255,82,82,0.35);
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .btn-reset:hover {
+      background: rgba(255,82,82,0.1);
+      border-color: var(--red);
+    }
+
+    /* ── Leaderboard ── */
+    .lb-wrap {
+      padding: 28px 32px;
+      overflow-y: auto;
+    }
+    .lb-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 22px;
+    }
+    .lb-top h2 {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    .q-count {
+      font-size: 12px;
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 5px;
+    }
+    thead th {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      padding: 6px 16px;
+      text-align: left;
+    }
+
+    tbody tr {
+      background: var(--surface);
+      border-radius: 12px;
+      transition: background 0.15s;
+    }
+    tbody tr:hover { background: var(--surface2); }
+    tbody td {
+      padding: 14px 16px;
+      vertical-align: middle;
+    }
+    tbody td:first-child { border-radius: 12px 0 0 12px; }
+    tbody td:last-child  { border-radius: 0 12px 12px 0; }
+
+    .rank-cell {
+      font-family: 'Space Mono', monospace;
+      font-weight: 700;
+      font-size: 17px;
+      width: 48px;
+    }
+    .r1 { color: var(--gold); }
+    .r2 { color: var(--silver); }
+    .r3 { color: var(--bronze); }
+    .rn { color: var(--muted); font-size: 14px; }
+
+    .name-cell { font-size: 15px; font-weight: 600; }
+
+    .bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 180px;
+    }
+    .bar-track {
+      flex: 1;
+      height: 6px;
+      background: var(--surface2);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: width 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .score-val {
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent2);
+      min-width: 38px;
+    }
+
+    .pct-cell {
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .badge-done {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: rgba(0,230,118,0.1);
+      border: 1px solid rgba(0,230,118,0.2);
+      color: var(--green);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-prog {
+      display: inline-flex; align-items: center; gap: 5px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    /* Empty state */
+    .empty {
+      text-align: center;
+      padding: 80px 20px;
+    }
+    .empty-icon { font-size: 52px; margin-bottom: 14px; }
+    .empty h3 { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+    .empty p  { font-size: 13px; color: var(--muted); }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-brand">
+    <div class="brand-icon">📊</div>
+    <div class="brand-text">
+      <h1>Pedagogical Communication Test</h1>
+      <p>Admin Panel — Real-time Leaderboard</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="live-pill">
+      <span class="live-dot"></span>
+      LIVE
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+
+  <aside class="sidebar">
+
+    <div class="panel">
+      <div class="panel-label">📱 Ishtirokchilar uchun</div>
+      <div id="qrcode"></div>
+      <div class="quiz-url" id="quizUrl">Yuklanmoqda...</div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-label">📈 Statistika</div>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="num" id="sTotal">0</div>
+          <div class="lbl">Ishtirokchi</div>
+        </div>
+        <div class="stat-box">
+          <div class="num" id="sDone">0</div>
+          <div class="lbl">Tugatdi</div>
+        </div>
+        <div class="stat-box">
+          <div class="num" id="sMax">—</div>
+          <div class="lbl">Eng yuqori</div>
+        </div>
+        <div class="stat-box">
+          <div class="num" id="sAvg">—</div>
+          <div class="lbl">O'rtacha</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-label">⚙️ Boshqaruv</div>
+      <button class="btn-reset" onclick="resetAll()">🗑 Barcha ma'lumotlarni tozalash</button>
+    </div>
+
+  </aside>
+
+  <main class="lb-wrap">
+    <div class="lb-top">
+      <h2>🏆 Reyting Jadvali</h2>
+      <span class="q-count">15 savol</span>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Ishtirokchi</th>
+          <th>Ball</th>
+          <th>Foiz</th>
+          <th>Holat</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </main>
+
+</div>
+
+<script>
+  // ================================================================
+  //  FIREBASE CONFIG
+  //  Bu yerga o'zingizning Firebase loyiha ma'lumotlaringizni kiriting
+  // ================================================================
+  const firebaseConfig = {
+    apiKey:            "YOUR_API_KEY",
+    authDomain:        "YOUR_PROJECT_ID.firebaseapp.com",
+    databaseURL:       "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+    projectId:         "YOUR_PROJECT_ID",
+    storageBucket:     "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId:             "YOUR_APP_ID"
+  };
+  // ================================================================
+
+  const TOTAL = 15;
+
+  firebase.initializeApp(firebaseConfig);
+  const db  = firebase.database();
+  const ref = db.ref('participants');
+
+  // QR Code yaratish
+  const quizUrl = window.location.href.replace('admin.html', 'quiz.html');
+  document.getElementById('quizUrl').textContent = quizUrl;
+  new QRCode(document.getElementById('qrcode'), {
+    text: quizUrl,
+    width: 210,
+    height: 210,
+    colorDark:  '#e8eef8',
+    colorLight: '#0d1421',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+
+  // Real-time listener
+  ref.on('value', snap => {
+    const raw  = snap.val() || {};
+    const list = Object.values(raw);
+
+    list.sort((a, b) => {
+      if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
+      return (a.finishedAt || Infinity) - (b.finishedAt || Infinity);
+    });
+
+    const done = list.filter(p => p.finished);
+
+    document.getElementById('sTotal').textContent = list.length;
+    document.getElementById('sDone').textContent  = done.length;
+
+    if (done.length > 0) {
+      const max = Math.max(...done.map(p => p.score || 0));
+      const avg = Math.round(done.reduce((s, p) => s + (p.score || 0), 0) / done.length);
+      document.getElementById('sMax').textContent = max;
+      document.getElementById('sAvg').textContent = avg;
+    } else {
+      document.getElementById('sMax').textContent = '—';
+      document.getElementById('sAvg').textContent = '—';
+    }
+
+    renderTable(list);
+  });
+
+  function renderTable(list) {
+    const tbody = document.getElementById('tbody');
+
+    if (list.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5">
+            <div class="empty">
+              <div class="empty-icon">👥</div>
+              <h3>Hali hech kim qatnashmagan</h3>
+              <p>Ishtirokchilar QR-kodni skanerlashsa, bu yerda ko'rinadi</p>
+            </div>
+          </td>
+        </tr>`;
+      return;
+    }
+
+    tbody.innerHTML = list.map((p, i) => {
+      const rank  = i + 1;
+      const rCls  = rank === 1 ? 'r1' : rank === 2 ? 'r2' : rank === 3 ? 'r3' : 'rn';
+      const rLbl  = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
+      const score = p.score || 0;
+      const pct   = Math.round((score / TOTAL) * 100);
+      const status = p.finished
+        ? `<span class="badge-done">✓ Tugatdi</span>`
+        : `<span class="badge-prog">⏳ Jarayonda</span>`;
+
+      return `<tr>
+        <td><span class="rank-cell ${rCls}">${rLbl}</span></td>
+        <td><span class="name-cell">${esc(p.name)}</span></td>
+        <td>
+          <div class="bar-wrap">
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${pct}%"></div>
+            </div>
+            <span class="score-val">${score}/${TOTAL}</span>
+          </div>
+        </td>
+        <td><span class="pct-cell">${pct}%</span></td>
+        <td>${status}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function resetAll() {
+    if (confirm("Barcha ishtirokchilar ma'lumotlari o'chiriladi. Davom etasizmi?")) {
+      ref.remove();
+    }
+  }
+
+  function esc(s) {
+    return String(s || '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>
